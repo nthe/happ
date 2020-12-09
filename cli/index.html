@@ -1,0 +1,101 @@
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>: 2 : </title>
+    <style>
+        main {
+            background: #fff;
+            margin: 0;
+            padding: 16px;
+        }
+
+        input {
+            display: block;
+        }
+
+        #msgBox {
+            height: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <p id="connection">disconnected</p>
+    <main>
+        <button onclick="takeScreenshot()">take screenshot</button>
+        <button onclick="openCalculator()">open calculator</button>
+        <input type="text" id="msgBox" />
+        <p id="logBox"></p>
+        <canvas id="myCanvas" width="960" height="540"></canvas>
+    </main>
+    <script>
+        document.addEventListener("DOMContentLoaded", (g) => {
+            const conn = document.getElementById("connection")
+            const msgBox = document.getElementById("msgBox")
+            const logBox = document.getElementById("logBox")
+
+            const socket = new WebSocket("ws://localhost:11000/ws")
+
+            document.body.style.backgroundColor = 'gray'
+
+            socket.onopen = _ => {
+                document.body.style.backgroundColor = 'green'
+                conn.innerText = "connected"
+            }
+
+            socket.onerror = _ => {
+                document.body.style.backgroundColor = 'red'
+                conn.innerText = "server on your machine is not running, start it / install it"
+            }
+
+            
+            document.openCalculator = () => {
+                let msg = {
+                    Resource: "run-process",
+                    Args: [
+                        msgBox.value
+                    ]
+                }
+                socket.send(JSON.stringify(msg))
+            }
+
+            const TakeScreenShotAction = "take-screenshot";
+
+            document.takeScreenshot = () => {
+                let msg = {
+                    Resource: TakeScreenShotAction,
+                    Args: []
+                }
+                socket.send(JSON.stringify(msg))
+            }
+
+            const handleTakeScreenshot = (data) => {
+                img.src = data
+                ctx.drawImage(img, 0, 0, img.width / 2, img.height / 2)
+                setTimeout(document.takeScreenshot, 50);
+            }
+
+            const img = document.createElement('img')
+            const c = document.getElementById("myCanvas");
+            const ctx = c.getContext("2d");
+            
+            const router = {
+                [TakeScreenShotAction]: handleTakeScreenshot
+            }
+
+            socket.onmessage = event => {
+                const del = event.data.substring(0, 50).indexOf('|')
+                const resource = event.data.substring(0, del)
+                const payload = event.data.substring(del + 1)
+                router[resource](payload)
+            }
+
+            window.addEventListener('unload', _ => socket.close())
+        })
+
+    </script>
+</body>
+
+</html>
